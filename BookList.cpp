@@ -105,10 +105,14 @@ std::size_t BookList::find( const Book & book ) const
     /// perfect fit here, but you may also write your own loop.
 
     // first find the value of location 
-    size_t location = std::find(_books_vector.begin(), _books_vector.end(), book) -  _books_vector.begin();
-    // does the location match the book - need to check because last location could not match
-    if(_books_vector[location] == book) return location;
+    for(auto p = _books_vector.begin(); p != _books_vector.end(); ++p)
+    {
+      if(*p == book){
+        return std::distance(_books_vector.begin(), p);
+      }
+    }
     // if location doesnt match (last location) return the size of the list. 
+    
     return size();
 
   /////////////////////// END-TO-DO (2) ////////////////////////////
@@ -187,19 +191,23 @@ void BookList::insert( const Book & book, std::size_t offsetFromTop )       // i
       /// std::move_backward will be helpful, or write your own loop.
 
 
-      // 1st - verify size of array is less then max size of array
-      if(size() == _books_array_size) throw CapacityExceeded_Ex("Capacity of the array reached");
-      // 2nd - increment size up 
-      _books_array_size++;
-      // 3rd - thing is move all the data back
+      // 1st - verify size of array is less then max size of array else throw error
+      if(_books_array_size < _books_array.size()) {
+      
+      // 2nd - thing is move all the data back
       // preincrement so we are one over from the end. 
-      for(auto location = size() -1; location != offsetFromTop; --location)
-      {
-        //move the data from the current location to the location one over. 
-        _books_array.begin()[location] = std::move(_books_array.begin()[location -1]);
+      std::move_backward(&_books_array[offsetFromTop],_books_array.end()-1,_books_array.end());
+      
+      // 3rd - Actually insert the data 
+      _books_array[offsetFromTop] = book;
+
+      // 4th - increment size up 
+      _books_array_size++;
+      } else {
+        throw CapacityExceeded_Ex("Capacity of the array reached");
       }
-      // 4th - Actually insert the data 
-      _books_array.begin()[offsetFromTop] = book;
+      
+      
 
     /////////////////////// END-TO-DO (4) ////////////////////////////
   } // Part 1 - Insert into array
@@ -240,7 +248,6 @@ void BookList::insert( const Book & book, std::size_t offsetFromTop )       // i
       auto p = std::next(_books_dl_list.begin(),offsetFromTop);
       
       _books_dl_list.insert(p, book);
-
     /////////////////////// END-TO-DO (6) ////////////////////////////
   } // Part 3 - Insert into doubly linked list
 
@@ -256,7 +263,7 @@ void BookList::insert( const Book & book, std::size_t offsetFromTop )       // i
       /// write your own loop.
 
       // pointer notation and using std::list insert
-      auto p = std::next(_books_sl_list.begin(),offsetFromTop);
+      auto p = std::next(_books_sl_list.before_begin(),offsetFromTop);
 
       _books_sl_list.insert_after(p, book);
 
@@ -304,14 +311,10 @@ void BookList::remove( std::size_t offsetFromTop )
       
       // 1st- thing is move all the data back
       // preincrement so we are one over from the end. 
-      for(auto removePoint = offsetFromTop; removePoint != size(); ++removePoint)
-      {
-        //move the data from the current removePoint to the removePoint one over. 
-        _books_array.begin()[removePoint-1] = std::move(_books_array.begin()[removePoint]);
-      }
+      std::move(&_books_array[offsetFromTop] + 1, _books_array.end(), &_books_array[offsetFromTop] );
 
       // 2nd - change the arrary size for tracking
-      _books_array_size--;
+      --_books_array_size;
     /////////////////////// END-TO-DO (8) ////////////////////////////
   } // Part 1 - Remove from array
 
@@ -412,10 +415,14 @@ BookList & BookList::operator+=( const std::initializer_list<Book> & rhs )
     /// input type is a container of books accessible with iterators like all the other containers.  The constructor above gives an
     /// example.  Just like the above example, use BookList::insert() to insert each book of rhs at the bottom of this list.
 
+    // loop through initializer list 
     for(auto p = rhs.begin(); p != rhs.end(); ++p)
     {
+      // insert derefernced info to the bottom of the list
       insert(*p, size());
     }
+
+    //for( auto && book : rhs )   insert( book, Position::BOTTOM );
   /////////////////////// END-TO-DO (13) ////////////////////////////
 
   // Verify the internal book list state is still consistent amongst the four containers
@@ -478,7 +485,10 @@ std::weak_ordering BookList::operator<=>( BookList const & rhs ) const
     ///
     /// The content of all the book lists's containers is the same - so pick an easy one to walk.
 
+    // use the ternary operator to dertermine which list is smaller
     auto const compareList = size() < rhs.size() ? size() : rhs.size();
+
+    // loop throught the samller list and compare values
     for(auto p = _books_vector.begin(), end = p + compareList, rhsP = rhs._books_vector.begin(); p != end; ++rhsP, ++p)
     {
       auto compare = std::compare_weak_order_fallback(*p, *rhsP);
